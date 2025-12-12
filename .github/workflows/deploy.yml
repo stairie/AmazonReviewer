@@ -31,7 +31,18 @@ jobs:
     - name: Build application
       run: npm run build
 
-    - name: Deploy to EC2
+    - name: Deploy built files to EC2
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: ${{ secrets.EC2_PORT }}
+        source: "dist/*"
+        target: "/tmp/amazon-reviewer/"
+        strip_components: 1
+
+    - name: Update EC2 deployment
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
@@ -39,24 +50,17 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT }}
         script: |
-          # Navigate to application directory
-          cd /var/www/amazon-reviewer
+          # Copy built files from temp to web directory
+          sudo cp -r /tmp/amazon-reviewer/* /var/www/html/
           
-          # Pull latest changes
-          git pull origin main
+          # Set proper permissions
+          sudo chown -R www-data:www-data /var/www/html
+          sudo chmod -R 755 /var/www/html
           
-          # Install dependencies
-          npm ci
+          # Clean up temp files
+          rm -rf /tmp/amazon-reviewer
           
-          # Create production .env file
-          echo "VITE_OPENAI_API_KEY=${{ secrets.VITE_OPENAI_API_KEY }}" > .env
-          echo "VITE_OPENAI_ASSISTANT=${{ secrets.VITE_OPENAI_ASSISTANT }}" >> .env
-          
-          # Build the application
-          npm run build
-          
-          # Copy built files to web server directory
-          sudo cp -r dist/* /var/www/html/
-          
-          # Restart nginx (if using nginx)
+          # Restart nginx
           sudo systemctl restart nginx
+          
+          echo "Deployment completed successfully!"
