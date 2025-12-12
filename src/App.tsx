@@ -257,7 +257,7 @@ Please analyze this product review data according to your training.`
 
       {aiResponse && (
         <div className="ai-response">
-          <h3>AI Analysis Results</h3>
+          <h3>AI Results</h3>
           <div className="response-content">
             <pre>{aiResponse.content}</pre>
           </div>
