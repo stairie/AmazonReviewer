@@ -232,10 +232,33 @@ Please analyze this product review data according to your training.`
             placeholder="https://amazon.com/product-reviews/..."
           />
         </div>
+        <div className='form-group'>
+          <button type="submit" className="submit-btn" disabled={isLoading}>
+            {isLoading ? 'Analyzing...' : 'Submit for AI Analysis'}
+          </button>
+          <button
+            type="button"
+            className="reset-btn"
+            style={{float: 'right', backgroundColor: '#f44336', color: 'white', marginTop: '10px'}}
+            onClick={() => {
+              setFormData({
+                productTitle: '',
+                productDescription: '',
+                stars: 1,
+                additionalNotes: '',
+                customerReviewsUrl: ''
+              })
+              setAiResponse(null)
+              setError(null)
+            }}
+            disabled={isLoading}
+          >
+            Reset Form
+          </button>
 
-        <button type="submit" className="submit-btn" disabled={isLoading}>
-          {isLoading ? 'Analyzing...' : 'Submit for AI Analysis'}
-        </button>
+        </div>
+
+        
       </form>
 
       {error && (
