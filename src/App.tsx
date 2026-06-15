@@ -34,113 +34,22 @@ function App() {
     setAiResponse(null)
 
     try {
-      const apiKey = import.meta.env.VITE_OPENAI_API_KEY
-      const assistantId = import.meta.env.VITE_OPENAI_ASSISTANT
-
-      if (!apiKey || !assistantId) {
-        throw new Error('Missing OpenAI API key or Assistant ID in environment variables')
-      }
-
-      // Prepare the message for your trained assistant
-      const message = `Product Review Data for Analysis:
-
-Product Title: ${formData.productTitle}
-Product Description: ${formData.productDescription}
-Star Rating: ${formData.stars}/5 stars
-Additional Notes: ${formData.additionalNotes || 'None provided'}
-Customer Reviews URL: ${formData.customerReviewsUrl}
-
-Please analyze this product review data according to your training.`
-
-      // Create a thread
-      const threadResponse = await fetch('https://api.openai.com/v1/threads', {
+      const response = await fetch('/api/analyze', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'OpenAI-Beta': 'assistants=v2'
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'user',
-              content: message
-            }
-          ]
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
       })
 
-      if (!threadResponse.ok) {
-        throw new Error(`Failed to create thread: ${threadResponse.status}`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || `Server error: ${response.status}`)
       }
 
-      const thread = await threadResponse.json()
-
-      // Create a run with your assistant
-      const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'OpenAI-Beta': 'assistants=v2'
-        },
-        body: JSON.stringify({
-          assistant_id: assistantId
-        })
+      setAiResponse({
+        content: data.content,
+        timestamp: new Date()
       })
-
-      if (!runResponse.ok) {
-        throw new Error(`Failed to create run: ${runResponse.status}`)
-      }
-
-      const run = await runResponse.json()
-
-      // Poll for completion
-      let runStatus = run
-      while (runStatus.status === 'queued' || runStatus.status === 'in_progress') {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        const statusResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`, {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'OpenAI-Beta': 'assistants=v2'
-          }
-        })
-
-        if (!statusResponse.ok) {
-          throw new Error(`Failed to check run status: ${statusResponse.status}`)
-        }
-
-        runStatus = await statusResponse.json()
-      }
-
-      if (runStatus.status === 'completed') {
-        // Get the assistant's response
-        const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'OpenAI-Beta': 'assistants=v2'
-          }
-        })
-
-        if (!messagesResponse.ok) {
-          throw new Error(`Failed to get messages: ${messagesResponse.status}`)
-        }
-
-        const messages = await messagesResponse.json()
-        const assistantMessage = messages.data.find((msg: any) => msg.role === 'assistant')
-        
-        if (assistantMessage && assistantMessage.content[0]?.text?.value) {
-          setAiResponse({
-            content: assistantMessage.content[0].text.value,
-            timestamp: new Date()
-          })
-        } else {
-          throw new Error('No response received from assistant')
-        }
-      } else {
-        throw new Error(`Run failed with status: ${runStatus.status}`)
-      }
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred while processing your request')
@@ -266,7 +175,7 @@ Please analyze this product review data according to your training.`
           <h3>Error</h3>
           <p>{error}</p>
           <p className="error-help">
-            Make sure you have set both VITE_OPENAI_API_KEY and VITE_OPENAI_ASSISTANT in your .env file.
+            Make sure the backend server is running and configured with valid OpenAI credentials.
           </p>
         </div>
       )}
