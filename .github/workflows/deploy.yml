@@ -3,8 +3,10 @@ name: Deploy to EC2
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -26,6 +28,10 @@ jobs:
     - name: Build application
       run: npm run build
 
+    - name: Write deployment version marker
+      run: |
+        printf '{"commit":"%s","deployedAt":"%s"}\n' "${GITHUB_SHA}" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > dist/version.json
+
     - name: Deploy built files and server to EC2
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -45,6 +51,7 @@ jobs:
         port: ${{ secrets.EC2_PORT }}
         script: |
           # Copy React build to web directory
+          sudo rm -rf /var/www/html/*
           sudo cp -r /tmp/amazon-reviewer/dist/* /var/www/html/
           sudo chown -R www-data:www-data /var/www/html
           sudo chmod -R 755 /var/www/html

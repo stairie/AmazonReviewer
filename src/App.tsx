@@ -34,7 +34,7 @@ function App() {
     setAiResponse(null)
 
     try {
-      const response = await fetch('/api/analyze-responses', {
+      const response = await fetch('/api/analyze-responses',{
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
