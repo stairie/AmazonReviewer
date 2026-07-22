@@ -76,11 +76,11 @@ function App() {
       </header>
 
       <form onSubmit={handleSubmit} className="review-form">
-        <div>
+        <div style={{ position: 'relative', height: '25px'}}>
           <button
             type="button"
             className="reset-btn"
-            style={{float: 'right', backgroundColor: '#f44336', color: 'white', marginTop: '10px'}}
+            style={{backgroundColor: '#f44336', color: 'white', position: 'absolute', right: '-20px', top: '-25px'}}
             onClick={() => {
               setFormData({
                 productTitle: '',
