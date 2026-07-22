@@ -7,6 +7,7 @@ interface FormData {
   stars: number
   additionalNotes: string
   customerReviewsUrl: string
+  personality: string
 }
 
 interface AIResponse {
@@ -20,7 +21,8 @@ function App() {
     productDescription: '',
     stars: 1,
     additionalNotes: '',
-    customerReviewsUrl: ''
+    customerReviewsUrl: '',
+    personality: 'default'
   })
   
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null)
@@ -74,6 +76,28 @@ function App() {
       </header>
 
       <form onSubmit={handleSubmit} className="review-form">
+        <div>
+          <button
+            type="button"
+            className="reset-btn"
+            style={{float: 'right', backgroundColor: '#f44336', color: 'white', marginTop: '10px'}}
+            onClick={() => {
+              setFormData({
+                productTitle: '',
+                productDescription: '',
+                stars: 1,
+                additionalNotes: '',
+                customerReviewsUrl: '',
+                personality: 'default'
+              })
+              setAiResponse(null)
+              setError(null)
+            }}
+            disabled={isLoading}
+          >
+            Reset Form
+          </button>
+        </div>
         <div className="form-group">
           <label htmlFor="productTitle">Product Title</label>
           <input
@@ -130,43 +154,36 @@ function App() {
         </div>
 
         <div className="form-group">
-          <label htmlFor="customerReviewsUrl">Customer Reviews URL</label>
+          <label htmlFor="personality">Personality</label>
+          <select
+            id="personality"
+            name="personality"
+            value={formData.personality}
+            onChange={handleInputChange}
+          >
+            <option value="default">Default</option>
+            <option value="cheerful">Cheerful</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="customerReviewsUrl">Customer Reviews URL (Optional)</label>
           <input
             type="url"
             id="customerReviewsUrl"
             name="customerReviewsUrl"
             value={formData.customerReviewsUrl}
             onChange={handleInputChange}
-            required
             placeholder="https://amazon.com/product-reviews/..."
           />
         </div>
         <div className='form-group'>
           <button type="submit" className="submit-btn" disabled={isLoading}>
             {isLoading ? 'Analyzing...' : 'Submit for AI Analysis'}
-          </button>
-          <button
-            type="button"
-            className="reset-btn"
-            style={{float: 'right', backgroundColor: '#f44336', color: 'white', marginTop: '10px'}}
-            onClick={() => {
-              setFormData({
-                productTitle: '',
-                productDescription: '',
-                stars: 1,
-                additionalNotes: '',
-                customerReviewsUrl: ''
-              })
-              setAiResponse(null)
-              setError(null)
-            }}
-            disabled={isLoading}
-          >
-            Reset Form
-          </button>
+          </button>         
 
         </div>
-
         
       </form>
 

@@ -62,8 +62,19 @@ jobs:
           cd /var/app/amazon-reviewer
           sudo npm install --omit=dev
 
-          # Write server .env from GitHub Secrets (never exposed to browser)
-          printf 'OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}\nOPENAI_ASSISTANT=${{ secrets.OPENAI_ASSISTANT }}\n' | sudo tee /var/app/amazon-reviewer/.env > /dev/null
+          # Preserve existing server .env. Bootstrap only if missing.
+          if [ ! -f /var/app/amazon-reviewer/.env ]; then
+            printf 'OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}\nOPENAI_ASSISTANT=${{ secrets.OPENAI_ASSISTANT }}\nOPENAI_RESPONSES_MODEL=${{ secrets.OPENAI_RESPONSES_MODEL }}\nOPENAI_REVIEW_INSTRUCTIONS_FILE=review-instructions.txt\nFETCH_REVIEW_CONTEXT=${{ secrets.FETCH_REVIEW_CONTEXT }}\nREVIEW_FETCH_TIMEOUT_MS=${{ secrets.REVIEW_FETCH_TIMEOUT_MS }}\nREVIEW_CONTEXT_CHAR_LIMIT=${{ secrets.REVIEW_CONTEXT_CHAR_LIMIT }}\n' | sudo tee /var/app/amazon-reviewer/.env > /dev/null
+            echo "Created /var/app/amazon-reviewer/.env from GitHub secrets (first deploy bootstrap)."
+          else
+            echo "Keeping existing /var/app/amazon-reviewer/.env (not overwritten)."
+          fi
+
+          # Optional manual override: set repository secret DEPLOY_OVERWRITE_ENV=true
+          if [ "${{ secrets.DEPLOY_OVERWRITE_ENV }}" = "true" ]; then
+            printf 'OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}\nOPENAI_ASSISTANT=${{ secrets.OPENAI_ASSISTANT }}\nOPENAI_RESPONSES_MODEL=${{ secrets.OPENAI_RESPONSES_MODEL }}\nOPENAI_REVIEW_INSTRUCTIONS_FILE=review-instructions.txt\nFETCH_REVIEW_CONTEXT=${{ secrets.FETCH_REVIEW_CONTEXT }}\nREVIEW_FETCH_TIMEOUT_MS=${{ secrets.REVIEW_FETCH_TIMEOUT_MS }}\nREVIEW_CONTEXT_CHAR_LIMIT=${{ secrets.REVIEW_CONTEXT_CHAR_LIMIT }}\n' | sudo tee /var/app/amazon-reviewer/.env > /dev/null
+            echo "DEPLOY_OVERWRITE_ENV=true, overwrote /var/app/amazon-reviewer/.env from GitHub secrets."
+          fi
 
           # Install PM2 if needed, then restart server
           sudo npm install -g pm2

@@ -14,6 +14,17 @@ const openai = new OpenAI({
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+const PERSONALITIES_DIR = process.env.OPENAI_PERSONALITIES_DIR || 'personalities'
+const DEFAULT_PERSONALITY = process.env.OPENAI_DEFAULT_PERSONALITY || 'default'
+
+function readTextFileIfExists(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null
+  }
+
+  const content = fs.readFileSync(filePath, 'utf8').trim()
+  return content || null
+}
 
 function loadInstructions() {
   const instructionsFile = process.env.OPENAI_REVIEW_INSTRUCTIONS_FILE || 'review-instructions.txt'
@@ -21,11 +32,9 @@ function loadInstructions() {
     ? instructionsFile
     : path.join(__dirname, instructionsFile)
 
-  if (fs.existsSync(instructionsPath)) {
-    const fileContent = fs.readFileSync(instructionsPath, 'utf8').trim()
-    if (fileContent) {
-      return fileContent
-    }
+  const fileContent = readTextFileIfExists(instructionsPath)
+  if (fileContent) {
+    return fileContent
   }
 
   if (process.env.OPENAI_REVIEW_INSTRUCTIONS) {
@@ -39,7 +48,29 @@ function loadInstructions() {
   ].join(' ')
 }
 
-const REVIEW_INSTRUCTIONS = loadInstructions()
+function loadPersonality(personalityKey) {
+  const safeKey = (personalityKey || DEFAULT_PERSONALITY).toLowerCase().trim()
+
+  if (!/^[a-z0-9_-]+$/.test(safeKey)) {
+    return null
+  }
+
+  const personalityPath = path.join(__dirname, PERSONALITIES_DIR, `${safeKey}.txt`)
+  return readTextFileIfExists(personalityPath)
+}
+
+function buildInstructions(personalityKey) {
+  const baseInstructions = loadInstructions()
+  const personalityInstructions = loadPersonality(personalityKey)
+
+  if (!personalityInstructions) {
+    return baseInstructions
+  }
+
+  return `${baseInstructions}\n\n${personalityInstructions}`
+}
+
+const REVIEW_INSTRUCTIONS = buildInstructions(DEFAULT_PERSONALITY)
 
 const FETCH_REVIEW_CONTEXT = (process.env.FETCH_REVIEW_CONTEXT || 'true').toLowerCase() === 'true'
 const REVIEW_FETCH_TIMEOUT_MS = Number(process.env.REVIEW_FETCH_TIMEOUT_MS || 6000)
@@ -52,7 +83,7 @@ Product Title: ${productTitle}
 Product Description: ${productDescription}
 Star Rating: ${stars}/5 stars
 Additional Notes: ${additionalNotes || 'None provided'}
-Customer Reviews URL: ${customerReviewsUrl}`
+Customer Reviews URL: ${customerReviewsUrl || 'None provided'}`
 }
 
 function isValidReviewUrl(rawUrl) {
@@ -127,8 +158,8 @@ async function buildModelInput(payload) {
   return `${baseMessage}\n\nCustomer Reviews Page Context (truncated):\n${fetchedContext}`
 }
 
-function validatePayload({ productTitle, productDescription, stars, customerReviewsUrl }) {
-  return Boolean(productTitle && productDescription && stars && customerReviewsUrl)
+function validatePayload({ productTitle, productDescription, stars }) {
+  return Boolean(productTitle && productDescription && stars)
 }
 
 app.post('/api/analyze', async (req, res) => {
@@ -168,7 +199,7 @@ Please analyze this product review data according to your training.`
 })
 
 app.post('/api/analyze-responses', async (req, res) => {
-  const { productTitle, productDescription, stars, additionalNotes, customerReviewsUrl } = req.body
+  const { productTitle, productDescription, stars, additionalNotes, customerReviewsUrl, personality } = req.body
 
   if (!validatePayload({ productTitle, productDescription, stars, customerReviewsUrl })) {
     return res.status(400).json({ error: 'Missing required fields' })
@@ -185,7 +216,7 @@ app.post('/api/analyze-responses', async (req, res) => {
 
     const response = await openai.responses.create({
       model: process.env.OPENAI_RESPONSES_MODEL || 'gpt-4.1-mini',
-      instructions: REVIEW_INSTRUCTIONS,
+      instructions: buildInstructions(personality),
       input: message
     })
 
